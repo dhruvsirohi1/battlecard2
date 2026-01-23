@@ -1,0 +1,356 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Tuskira Battle Forge - Serverless Backend Infrastructure'
+
+Parameters:
+  AppName:
+    Type: String
+    Default: tuskira-battleforge
+    Description: Application name for resource naming
+
+Resources:
+  # DynamoDB Tables
+  CompetitorsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AppName}-competitors'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: url
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: url-index
+          KeySchema:
+            - AttributeName: url
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  DocumentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AppName}-documents'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  BattleCardsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AppName}-battlecards'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-createdAt-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # S3 Bucket for Documents
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AppName}-storage-${AWS::AccountId}'
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldDocuments
+            Status: Enabled
+            ExpirationInDays: 90
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt CompetitorsTable.Arn
+                  - !GetAtt DocumentsTable.Arn
+                  - !GetAtt BattleCardsTable.Arn
+                  - !Sub '${CompetitorsTable.Arn}/index/*'
+                  - !Sub '${DocumentsTable.Arn}/index/*'
+                  - !Sub '${BattleCardsTable.Arn}/index/*'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub '${DocumentsBucket.Arn}/*'
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: '*'
+        - PolicyName: TextractAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - textract:DetectDocumentText
+                  - textract:AnalyzeDocument
+                Resource: '*'
+
+  # Lambda Functions
+  AnalyzeCompetitorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-analyze-competitor'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          COMPETITORS_TABLE: !Ref CompetitorsTable
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Deploy actual function code' })
+            };
+          };
+
+  ProcessDocumentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-process-document'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          DOCUMENTS_TABLE: !Ref DocumentsTable
+          STORAGE_BUCKET: !Ref DocumentsBucket
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Deploy actual function code' })
+            };
+          };
+
+  GenerateBattleCardFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-generate-battlecard'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          BATTLECARDS_TABLE: !Ref BattleCardsTable
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Deploy actual function code' })
+            };
+          };
+
+  # API Gateway
+  BattleCardAPI:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AppName}-api'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - '*'
+        MaxAge: 300
+
+  ApiIntegrationAnalyze:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt AnalyzeCompetitorFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ApiIntegrationProcess:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ProcessDocumentFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ApiIntegrationGenerate:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt GenerateBattleCardFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ApiRouteAnalyze:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      RouteKey: 'POST /analyze-competitor'
+      Target: !Sub 'integrations/${ApiIntegrationAnalyze}'
+
+  ApiRouteProcess:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      RouteKey: 'POST /process-document'
+      Target: !Sub 'integrations/${ApiIntegrationProcess}'
+
+  ApiRouteGenerate:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      RouteKey: 'POST /generate-battlecard'
+      Target: !Sub 'integrations/${ApiIntegrationGenerate}'
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref BattleCardAPI
+      StageName: prod
+      AutoDeploy: true
+
+  # Lambda Permissions for API Gateway
+  AnalyzeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AnalyzeCompetitorFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${BattleCardAPI}/*'
+
+  ProcessLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProcessDocumentFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${BattleCardAPI}/*'
+
+  GenerateLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GenerateBattleCardFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${BattleCardAPI}/*'
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${BattleCardAPI}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AppName}-api-endpoint'
+
+  DocumentsBucketName:
+    Description: S3 bucket for document storage
+    Value: !Ref DocumentsBucket
+    Export:
+      Name: !Sub '${AppName}-documents-bucket'
+
+  CompetitorsTableName:
+    Description: DynamoDB table for competitors
+    Value: !Ref CompetitorsTable
+    Export:
+      Name: !Sub '${AppName}-competitors-table'
+
+  BattleCardsTableName:
+    Description: DynamoDB table for battle cards
+    Value: !Ref BattleCardsTable
+    Export:
+      Name: !Sub '${AppName}-battlecards-table'

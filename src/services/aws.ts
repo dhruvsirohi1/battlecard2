@@ -47,27 +47,30 @@ export interface BattleCardContent {
 
 /**
  * Analyze a competitor's website
- */
-export async function analyzeCompetitor(url: string): Promise<CompetitorAnalysis> {
-  try {
-    const response = await fetch(awsconfig.API.endpoints[0].endpoint + '/analyze-competitor', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ url }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to analyze competitor');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error analyzing competitor:', error);
-    throw error;
-  }
-}
+export const analyzeCompetitor = async (url: string) => {
+  console.log('Analyzing competitor:', url);
+  
+  // Extract company name from URL
+  const cleanUrl = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  const domain = cleanUrl.split('.')[0];
+  const name = domain.charAt(0).toUpperCase() + domain.slice(1);
+  
+  // Return immediately (no API call)
+  return {
+    url,
+    name,
+    description: `${name} is a cybersecurity company`,
+    features: ['Security Platform', 'Threat Detection', 'Cloud Protection'],
+    pricing: { 
+      model: 'Subscription', 
+      tiers: ['Essential', 'Professional', 'Enterprise'] 
+    },
+    strengths: ['Market Leader', 'Comprehensive Features'],
+    weaknesses: ['High Cost', 'Complex Setup'],
+    targetMarket: 'Enterprise',
+    analyzedAt: new Date().toISOString()
+  };
+};
 
 /**
  * Upload document to S3

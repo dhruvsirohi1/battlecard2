@@ -47,6 +47,7 @@ export interface BattleCardContent {
 
 /**
  * Analyze a competitor's website
+ */
 export const analyzeCompetitor = async (url: string) => {
   console.log('Analyzing competitor:', url);
   

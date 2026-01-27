@@ -1,3 +1,4 @@
+import { exportProfessionalPDF } from '@/lib/exportProfessionalPDF';
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -41,50 +42,31 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     );
   };
 
-  const exportToPDF = async () => {
-    try {
-      // Dynamic import to reduce bundle size
-      const html2canvas = (await import('html2canvas')).default;
-      const jsPDF = (await import('jspdf')).default;
+  const exportToPDF = () => {
+  if (!battleCard) {
+    toast({
+      title: "Error",
+      description: "No battle card data to export",
+      variant: "destructive",
+    });
+    return;
+  }
 
-      if (!battleCardRef.current) return;
-
-      toast.info('Generating PDF...');
-
-      const canvas = await html2canvas(battleCardRef.current, {
-        scale: 2,
-        backgroundColor: '#0a0e1a',
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= 297;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= 297;
-      }
-
-      pdf.save(`battle-card-${battleCard.id}.pdf`);
-      toast.success('PDF downloaded successfully!');
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
-    }
-  };
+  try {
+    exportProfessionalPDF(battleCard);
+    toast({
+      title: "Success",
+      description: "Battle card exported as PDF",
+    });
+  } catch (error) {
+    console.error('PDF export error:', error);
+    toast({
+      title: "Error",
+      description: "Failed to export PDF",
+      variant: "destructive",
+    });
+  }
+};
 
   const exportToJSON = () => {
     const dataStr = JSON.stringify(battleCard, null, 2);

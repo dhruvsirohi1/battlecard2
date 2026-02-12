@@ -1,10 +1,10 @@
 import { exportProfessionalPDF } from '@/lib/exportProfessionalPDF';
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Download, 
-  Link2, 
-  Copy, 
+import {
+  Download,
+  Link2,
+  Copy,
   Check,
   FileText,
   ChevronDown,
@@ -27,11 +27,15 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   const battleCardRef = useRef<HTMLDivElement>(null);
   const shareUrl = `https://tuskira.app/cards/${battleCard.id.slice(-8)}`;
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    toast.success('Link copied to clipboard!');
-    setTimeout(() => setCopied(false), 2000);
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast.success('Link copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy link');
+    }
   };
 
   const toggleSection = (section: string) => {
@@ -42,31 +46,36 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     );
   };
 
-  const exportToPDF = () => {
-  if (!battleCard) {
-    toast({
-      title: "Error",
-      description: "No battle card data to export",
-      variant: "destructive",
-    });
-    return;
-  }
+  const exportToPDF = async () => {
+    if (!battleCard) {
+      toast.error('No battle card data to export');
+      return;
+    }
 
-  try {
-    exportProfessionalPDF(battleCard);
-    toast({
-      title: "Success",
-      description: "Battle card exported as PDF",
-    });
-  } catch (error) {
-    console.error('PDF export error:', error);
-    toast({
-      title: "Error",
-      description: "Failed to export PDF",
-      variant: "destructive",
-    });
-  }
-};
+    let logoDataUrl: string | undefined;
+    try {
+      const res = await fetch('/tuskira-icon2.png');
+      if (res.ok) {
+        const blob = await res.blob();
+        logoDataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      }
+    } catch {
+      // Export without logo if image fails to load
+    }
+
+    try {
+      exportProfessionalPDF(battleCard, logoDataUrl);
+      toast.success('Battle card exported as PDF');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Failed to export PDF');
+    }
+  };
 
   const exportToJSON = () => {
     const dataStr = JSON.stringify(battleCard, null, 2);
@@ -77,7 +86,7 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
-    
+
     toast.success('JSON downloaded successfully!');
   };
 
@@ -121,8 +130,8 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
           Export Options
         </h3>
         <div className="grid sm:grid-cols-2 gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="h-auto py-4 justify-start gap-4"
             onClick={exportToPDF}
           >
@@ -134,8 +143,8 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
               <p className="text-sm text-muted-foreground">Printable format</p>
             </div>
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="h-auto py-4 justify-start gap-4"
             onClick={exportToJSON}
           >

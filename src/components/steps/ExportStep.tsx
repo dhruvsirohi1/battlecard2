@@ -46,36 +46,36 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     );
   };
 
-  const exportToPDF = async () => {
-    if (!battleCard) {
-      toast.error('No battle card data to export');
-      return;
-    }
+  const exportToPDF = () => {
+  console.log('Battle card data:', battleCard);
+  console.log('Has differentiators?', battleCard?.differentiators);
+  console.log('Type of battleCard:', typeof battleCard);
+  console.log('Keys:', Object.keys(battleCard || {}));
+  
+  if (!battleCard) {
+    toast({
+      title: "Error",
+      description: "No battle card data",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    let logoDataUrl: string | undefined;
-    try {
-      const res = await fetch('/tuskira-icon2.png');
-      if (res.ok) {
-        const blob = await res.blob();
-        logoDataUrl = await new Promise<string>((resolve, reject) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result as string);
-          r.onerror = reject;
-          r.readAsDataURL(blob);
-        });
-      }
-    } catch {
-      // Export without logo if image fails to load
-    }
-
-    try {
-      exportProfessionalPDF(battleCard, logoDataUrl);
-      toast.success('Battle card exported as PDF');
-    } catch (error) {
-      console.error('PDF export error:', error);
-      toast.error('Failed to export PDF');
-    }
-  };
+  try {
+    exportProfessionalPDF(battleCard);
+    toast({
+      title: "Success",
+      description: "PDF exported",
+    });
+  } catch (error) {
+    console.error('PDF export error:', error);
+    toast({
+      title: "Error",
+      description: "Failed to export PDF",
+      variant: "destructive",
+    });
+  }
+};
 
   const exportToJSON = () => {
     const dataStr = JSON.stringify(battleCard, null, 2);

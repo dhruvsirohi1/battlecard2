@@ -12,7 +12,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           <div className="relative">
   <img 
-    src="/src/assets/tuskira-logo.png" 
+    src="/tuskira-icon2.png" 
     alt="Tuskira" 
     className="w-10 h-10 rounded-lg"
   />

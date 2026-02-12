@@ -11,13 +11,12 @@ export function Header() {
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-info flex items-center justify-center">
-              <Shield className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-success flex items-center justify-center">
-              <Zap className="w-2.5 h-2.5 text-success-foreground" />
-            </div>
-          </div>
+  <img 
+    src="/src/assets/tuskira-logo.png" 
+    alt="Tuskira" 
+    className="w-10 h-10 rounded-lg"
+  />
+</div>
           <div>
             <h1 className="text-lg font-bold text-foreground">Tuskira</h1>
             <p className="text-xs text-muted-foreground">Battle Card Generator</p>

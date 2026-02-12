@@ -47,14 +47,18 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   };
 
   const exportToPDF = () => {
-  const exportToPDF = () => {
-  console.log('=== DEBUG START ===');
-  console.log('battleCard:', battleCard);
-  console.log('=== DEBUG END ===');
-  
-  // Don't call PDF yet - just log
-  // exportProfessionalPDF(battleCard);
-};
+  if (!battleCard) {
+    alert('No battle card data');
+    return;
+  }
+
+  try {
+    exportProfessionalPDF(battleCard);
+    // Show success message if you want
+  } catch (error) {
+    console.error('PDF export error:', error);
+    alert('Failed to export PDF');
+  }
 };
 
   const exportToJSON = () => {

@@ -101,6 +101,7 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
         documents: processedDocuments,
         template: data.template,
         sections: enabledSections,
+forceRegenerate: true,
       });
 
       setCurrentStep(4);

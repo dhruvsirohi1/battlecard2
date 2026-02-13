@@ -99,12 +99,15 @@ const Index = () => {
       
       <main className="container mx-auto px-6 pt-24 pb-12">
         <div className="max-w-4xl mx-auto">
-          {/* Hero Section */}
+          {/* Hero Section - Tuskira website style */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
+            <p className="text-xs font-medium tracking-widest text-primary uppercase mb-3">
+              Battle Cards
+            </p>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               <span className="gradient-text">Battle Card</span>
               <span className="text-foreground"> Generator</span>
@@ -123,8 +126,8 @@ const Index = () => {
             />
           </div>
 
-          {/* Step Content */}
-          <div className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-8">
+          {/* Step Content - card with subtle depth */}
+          <div className="bg-card/80 backdrop-blur-sm border border-border rounded-xl p-8 shadow-card">
             <AnimatePresence mode="wait">
               {currentStep === 'competitors' && (
                 <CompetitorStep

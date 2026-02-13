@@ -6,60 +6,61 @@
 
 @layer base {
   :root {
-    /* Tuskira Brand Colors - Dark Theme */
+    /* Tuskira Website Style - Dark Navy + Yellow/Gold Accent */
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 8%;
+    --card: 218 32% 18%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 10%;
+    --popover: 218 32% 14%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 187 75% 50%;
-    --primary-foreground: 222 47% 6%;
+    /* Yellow/gold accent (#FDD01C) - CTAs and key highlights */
+    --primary: 47 98% 55%;
+    --primary-foreground: 222 47% 8%;
 
-    --secondary: 222 47% 14%;
+    --secondary: 218 32% 24%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 222 40% 18%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 218 28% 22%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 187 75% 50%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 47 98% 55%;
+    --accent-foreground: 222 47% 8%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 222 40% 18%;
-    --input: 222 40% 14%;
-    --ring: 187 75% 50%;
+    --border: 218 28% 22%;
+    --input: 218 28% 18%;
+    --ring: 47 98% 55%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Custom Tuskira Variables */
-    --gradient-primary: linear-gradient(135deg, hsl(187 75% 50%), hsl(200 80% 45%));
-    --gradient-card: linear-gradient(180deg, hsl(222 47% 10%), hsl(222 47% 7%));
-    --gradient-glow: radial-gradient(ellipse at center, hsl(187 75% 50% / 0.15), transparent 70%);
-    --shadow-glow: 0 0 40px -10px hsl(187 75% 50% / 0.4);
+    /* Custom Tuskira Variables - yellow/gold gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(47 98% 55%), hsl(45 95% 48%));
+    --gradient-card: linear-gradient(180deg, hsl(218 32% 20%), hsl(218 32% 14%));
+    --gradient-glow: radial-gradient(ellipse 80% 50% at 50% -20%, hsl(47 98% 55% / 0.08), transparent 50%);
+    --shadow-glow: 0 0 40px -10px hsl(47 98% 55% / 0.25);
     --shadow-card: 0 4px 24px -4px hsl(222 47% 3% / 0.5);
 
     /* Success/Warning/Info */
     --success: 142 76% 36%;
     --success-foreground: 210 40% 98%;
     --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 6%;
-    --info: 200 80% 50%;
-    --info-foreground: 222 47% 6%;
+    --warning-foreground: 222 47% 8%;
+    --info: 48 95% 62%;
+    --info-foreground: 222 47% 8%;
 
-    --sidebar-background: 222 47% 8%;
+    --sidebar-background: 218 32% 14%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 187 75% 50%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 47% 14%;
+    --sidebar-primary: 47 98% 55%;
+    --sidebar-primary-foreground: 222 47% 8%;
+    --sidebar-accent: 218 32% 22%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 40% 18%;
-    --sidebar-ring: 187 75% 50%;
+    --sidebar-border: 218 28% 22%;
+    --sidebar-ring: 47 98% 55%;
   }
 
   .dark {
@@ -79,7 +80,11 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    background-image: var(--gradient-glow);
+    background-image:
+      var(--gradient-glow),
+      linear-gradient(hsl(218 32% 12% / 0.4) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(218 32% 12% / 0.4) 1px, transparent 1px);
+    background-size: 100% 100%, 60px 60px, 60px 60px;
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -112,6 +117,10 @@
     box-shadow: var(--shadow-glow);
   }
 
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
   .card-gradient {
     background: var(--gradient-card);
   }
@@ -130,7 +139,7 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px -5px hsl(187 75% 50% / 0.3); }
-    50% { box-shadow: 0 0 40px -5px hsl(187 75% 50% / 0.5); }
+    0%, 100% { box-shadow: 0 0 20px -5px hsl(47 98% 55% / 0.25); }
+    50% { box-shadow: 0 0 40px -5px hsl(47 98% 55% / 0.4); }
   }
 }

@@ -26,7 +26,7 @@ export function WizardProgress({ currentStep, completedSteps }: WizardProgressPr
         {/* Progress Line */}
         <div className="absolute top-5 left-0 right-0 h-0.5 bg-border" />
         <motion.div 
-          className="absolute top-5 left-0 h-0.5 bg-gradient-to-r from-primary to-info"
+          className="absolute top-5 left-0 h-0.5 bg-primary"
           initial={{ width: '0%' }}
           animate={{ width: `${(currentIndex / (steps.length - 1)) * 100}%` }}
           transition={{ duration: 0.5, ease: 'easeInOut' }}
@@ -46,7 +46,7 @@ export function WizardProgress({ currentStep, completedSteps }: WizardProgressPr
                 transition={{ delay: index * 0.1 }}
                 className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
-                  isCompleted && "bg-gradient-to-br from-primary to-info",
+                  isCompleted && "bg-primary",
                   isCurrent && "bg-primary glow-effect",
                   !isCompleted && !isCurrent && "bg-secondary border border-border"
                 )}

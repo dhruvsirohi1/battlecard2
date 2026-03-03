@@ -195,6 +195,21 @@ export async function getBattleCards(): Promise<BattleCardContent[]> {
 }
 
 /**
+ * Upload a PDF to Google Drive via Lambda
+ */
+export async function uploadPDFToDrive(pdfBase64: string, filename: string): Promise<void> {
+  const response = await fetch(awsconfig.API.endpoints[0].endpoint + '/generate-battlecard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'upload-pdf', pdfBase64, filename }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload PDF to Drive');
+  }
+}
+
+/**
  * Delete a battle card
  */
 export async function deleteBattleCard(id: string): Promise<void> {

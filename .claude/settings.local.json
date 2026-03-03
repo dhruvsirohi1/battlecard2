@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.tuskira.ai)",
+      "Bash(git push:*)",
+      "Bash(supabase:*)",
+      "Bash(brew install:*)"
+    ]
+  }
+}

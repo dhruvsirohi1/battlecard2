@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import type { BattleCardContent } from '@/services/aws';
+import { uploadPDFToDrive } from '@/services/aws';
 
 interface ExportStepProps {
   battleCard: BattleCardContent;
@@ -55,14 +56,8 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     try {
       const result = exportProfessionalPDF(battleCard);
       if (result) {
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-to-drive`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ pdfBase64: result.base64, filename: result.fileName }),
-        }).catch(err => console.error('Drive upload error:', err));
+        uploadPDFToDrive(result.base64, result.fileName)
+          .catch(err => console.error('Drive upload error:', err));
       }
     } catch (error) {
       console.error('PDF export error:', error);

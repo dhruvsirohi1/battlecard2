@@ -2,7 +2,11 @@ import { jsPDF } from 'jspdf';
 import type { BattleCardData } from '@/types/battlecard';
 
 /** Optional data URL for the header logo (e.g. from fetch + readAsDataURL). */
-export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: string) => {
+export const exportProfessionalPDF = (
+  battleCard: BattleCardData,
+  logoDataUrl?: string,
+  mode: 'download' | 'base64' = 'download',
+): string | void => {
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -384,7 +388,11 @@ export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: 
     pdf.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 15, pageHeight - 10);
   }
 
-  // Save
   const fileName = `BattleCard_${battleCard.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+
+  if (mode === 'base64') {
+    return pdf.output('base64');
+  }
+
   pdf.save(fileName);
 };

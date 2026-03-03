@@ -8,11 +8,8 @@ import {
   Check,
   FileText,
   ChevronDown,
-  ChevronUp,
-  Cloud,
-  Loader2,
+  ChevronUp
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -27,8 +24,6 @@ interface ExportStepProps {
 export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   const [copied, setCopied] = useState(false);
   const [expandedSections, setExpandedSections] = useState<string[]>(['overview']);
-  const [savingToDrive, setSavingToDrive] = useState(false);
-  const [driveLink, setDriveLink] = useState<string | null>(null);
   const battleCardRef = useRef<HTMLDivElement>(null);
   const shareUrl = `https://tuskira.app/cards/${battleCard.id.slice(-8)}`;
 
@@ -65,35 +60,6 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     alert('Failed to export PDF');
   }
 };
-
-  const saveToGoogleDrive = async () => {
-    if (driveLink) {
-      window.open(driveLink, '_blank');
-      return;
-    }
-
-    setSavingToDrive(true);
-    try {
-      const fileName = `BattleCard_${battleCard.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-      const pdfBase64 = exportProfessionalPDF(battleCard, undefined, 'base64') as string;
-
-      const { data, error } = await supabase.functions.invoke('upload-to-drive', {
-        body: { pdfBase64, filename: fileName },
-      });
-
-      if (error) throw error;
-
-      setDriveLink(data.webViewLink);
-      toast.success('Saved to Google Drive!', {
-        action: { label: 'Open', onClick: () => window.open(data.webViewLink, '_blank') },
-      });
-    } catch (err) {
-      console.error('Drive upload error:', err);
-      toast.error('Failed to save to Google Drive');
-    } finally {
-      setSavingToDrive(false);
-    }
-  };
 
   const exportToJSON = () => {
     const dataStr = JSON.stringify(battleCard, null, 2);
@@ -147,7 +113,7 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
           Export Options
         </h3>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 gap-3">
           <Button
             variant="outline"
             className="h-auto py-4 justify-start gap-4"
@@ -172,30 +138,6 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
             <div className="text-left">
               <p className="font-medium">Download JSON</p>
               <p className="text-sm text-muted-foreground">Raw data format</p>
-            </div>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-4 justify-start gap-4"
-            onClick={saveToGoogleDrive}
-            disabled={savingToDrive}
-          >
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              {savingToDrive ? (
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
-              ) : driveLink ? (
-                <Check className="w-5 h-5 text-success" />
-              ) : (
-                <Cloud className="w-5 h-5 text-primary" />
-              )}
-            </div>
-            <div className="text-left">
-              <p className="font-medium">
-                {savingToDrive ? 'Saving...' : driveLink ? 'Saved to Drive' : 'Save to Google Drive'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {driveLink ? 'Click to open file' : 'Upload to Google Drive'}
-              </p>
             </div>
           </Button>
         </div>

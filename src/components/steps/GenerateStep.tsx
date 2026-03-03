@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { BattleCardData } from '@/types/battlecard';
@@ -38,7 +38,7 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
     generateBattleCardAsync();
   }, []);
 
-  const generateBattleCardAsync = async () => {
+  const generateBattleCardAsync = async (force = false) => {
     try {
       setError(null);
       
@@ -101,6 +101,7 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
         documents: processedDocuments,
         template: data.template,
         sections: enabledSections,
+        forceRegenerate: force,
       });
 
       setCurrentStep(4);
@@ -210,7 +211,14 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
             </div>
 
             <div className="p-6 rounded-xl bg-card border border-border">
-              <h3 className="font-semibold text-foreground mb-4">Card Summary</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-foreground">Card Summary</h3>
+                {battleCard?.fromCache && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning font-medium">
+                    Cached · {battleCard.cacheAge}
+                  </span>
+                )}
+              </div>
               <div className="space-y-2 text-sm text-left">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Competitors Analyzed</span>
@@ -255,14 +263,31 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
             Try Again
           </Button>
         ) : (
-          <Button
-            variant="hero"
-            size="lg"
-            onClick={() => battleCard && onComplete(battleCard)}
-            disabled={!isComplete}
-          >
-            View & Export
-          </Button>
+          <div className="flex items-center gap-3">
+            {isComplete && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  setIsComplete(false);
+                  setBattleCard(null);
+                  setCurrentStep(0);
+                  generateBattleCardAsync(true);
+                }}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Force Regenerate
+              </Button>
+            )}
+            <Button
+              variant="hero"
+              size="lg"
+              onClick={() => battleCard && onComplete(battleCard)}
+              disabled={!isComplete}
+            >
+              View & Export
+            </Button>
+          </div>
         )}
       </div>
     </motion.div>

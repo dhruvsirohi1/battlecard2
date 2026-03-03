@@ -25,7 +25,7 @@ const docClient      = DynamoDBDocumentClient.from(dynamoClient);
 const secretsClient  = new SecretsManagerClient({ region: "us-east-2" });
 
 const BATTLECARDS_TABLE   = "TuskiraBattleCards";
-const CACHE_DURATION_DAYS = 30;
+const CACHE_DURATION_DAYS = 7;
 
 // ─── Set these via Lambda environment variables ───────────────────────────────
 // DRIVE_FOLDER_ID    : the part of the folder URL after /folders/

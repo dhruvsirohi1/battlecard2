@@ -43,6 +43,8 @@ export interface BattleCardContent {
   questions: string[];
   testimonials: Array<{ company: string; quote: string }>;
   generatedAt: string;
+  fromCache?: boolean;
+  cacheAge?: string;
 }
 
 /**
@@ -128,6 +130,7 @@ export async function generateBattleCard(data: {
   documents: DocumentContent[];
   template: string;
   sections: string[];
+  forceRegenerate?: boolean;
 }): Promise<BattleCardContent> {
   try {
     const response = await fetch(awsconfig.API.endpoints[0].endpoint + '/generate-battlecard', {

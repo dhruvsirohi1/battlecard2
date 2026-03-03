@@ -387,4 +387,5 @@ export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: 
   // Save
   const fileName = `BattleCard_${battleCard.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
   pdf.save(fileName);
+  return { fileName, base64: pdf.output('base64') };
 };

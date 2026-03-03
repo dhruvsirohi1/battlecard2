@@ -47,19 +47,28 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   };
 
   const exportToPDF = () => {
-  if (!battleCard) {
-    alert('No battle card data');
-    return;
-  }
+    if (!battleCard) {
+      alert('No battle card data');
+      return;
+    }
 
-  try {
-    exportProfessionalPDF(battleCard);
-    // Show success message if you want
-  } catch (error) {
-    console.error('PDF export error:', error);
-    alert('Failed to export PDF');
-  }
-};
+    try {
+      const result = exportProfessionalPDF(battleCard);
+      if (result) {
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-to-drive`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ pdfBase64: result.base64, filename: result.fileName }),
+        }).catch(err => console.error('Drive upload error:', err));
+      }
+    } catch (error) {
+      console.error('PDF export error:', error);
+      alert('Failed to export PDF');
+    }
+  };
 
   const exportToJSON = () => {
     const dataStr = JSON.stringify(battleCard, null, 2);

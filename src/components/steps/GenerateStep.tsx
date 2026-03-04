@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
+import { Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { BattleCardData } from '@/types/battlecard';
@@ -19,16 +19,8 @@ interface GenerateStepProps {
   onBack: () => void;
 }
 
-const steps = [
-  { id: 1, label: 'Analyzing competitor websites...', duration: 0 },
-  { id: 2, label: 'Processing uploaded documents...', duration: 0 },
-  { id: 3, label: 'Extracting key differentiators...', duration: 0 },
-  { id: 4, label: 'Generating competitive insights with AI...', duration: 0 },
-  { id: 5, label: 'Building your battle card...', duration: 0 },
-];
 
 export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: GenerateStepProps) {
-  const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,9 +30,6 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
   const generateBattleCardAsync = async (force = false) => {
     try {
       setError(null);
-      
-      // Step 1: Analyze competitors
-      setCurrentStep(0);
       const competitorAnalyses: CompetitorAnalysis[] = [];
       
       for (const competitor of data.competitors) {
@@ -61,8 +50,6 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
         throw new Error('Failed to analyze any competitors');
       }
 
-      // Step 2: Process documents
-      setCurrentStep(1);
       const processedDocuments: DocumentContent[] = [];
       
       for (const doc of data.documents) {
@@ -81,13 +68,6 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
         }
       }
 
-      // Step 3: Extract differentiators (handled by AI)
-      setCurrentStep(2);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Step 4 & 5: Generate battle card with AI
-      setCurrentStep(3);
-      
       const enabledSections = data.sections
         .filter(s => s.enabled)
         .map(s => s.name);
@@ -100,9 +80,6 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
         sections: enabledSections,
         forceRegenerate: force,
       });
-
-      setCurrentStep(4);
-      await new Promise(resolve => setTimeout(resolve, 500));
 
       setBattleCard(generatedCard);
       setIsComplete(true);
@@ -130,16 +107,14 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
     >
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
-          {error ? 'Generation Failed' : isComplete ? 'Your Battle Card is Ready!' : hasStarted ? 'Generating Battle Card' : 'Ready to Generate'}
+          {error ? 'Generation Failed' : isComplete ? 'Your Battle Card is Ready!' : 'Generating Battlecard'}
         </h2>
         <p className="text-muted-foreground">
           {error
             ? 'There was an error generating your battle card'
             : isComplete
             ? 'Your customized battle card has been created successfully'
-            : hasStarted
-            ? 'Please wait while we analyze and generate your card with AI'
-            : 'Configure options below, then click Generate'}
+            : 'Please wait while we generate your card with AI'}
         </p>
       </div>
 
@@ -158,46 +133,9 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
             </div>
           </motion.div>
         ) : !isComplete ? (
-          <div className="space-y-4">
-            {steps.map((step, index) => {
-              const isActive = index === currentStep;
-              const isCompleted = index < currentStep;
-
-              return (
-                <motion.div
-                  key={step.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center gap-4"
-                >
-                  <div className="shrink-0">
-                    {isCompleted ? (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="w-8 h-8 rounded-full bg-success flex items-center justify-center"
-                      >
-                        <CheckCircle2 className="w-5 h-5 text-success-foreground" />
-                      </motion.div>
-                    ) : isActive ? (
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                        <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-secondary border border-border" />
-                    )}
-                  </div>
-                  <span className={`text-sm ${
-                    isActive ? 'text-foreground font-medium' :
-                    isCompleted ? 'text-muted-foreground' :
-                    'text-muted-foreground/50'
-                  }`}>
-                    {step.label}
-                  </span>
-                </motion.div>
-              );
-            })}
+          <div className="flex flex-col items-center justify-center py-12 gap-6">
+            <Loader2 className="w-16 h-16 text-primary animate-spin" />
+            <p className="text-lg font-medium text-foreground">Generating Battlecard</p>
           </div>
         ) : (
           <motion.div

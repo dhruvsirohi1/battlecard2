@@ -28,7 +28,7 @@ export function Header() {
             Templates
           </a>
           <a href="https://drive.google.com/drive/folders/16l6pL0cSuDTd5V_AGYZ9Rdi4zb16GEo1?usp=share_link" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            My Cards
+            Documents
           </a>
           <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Help

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { BattleCardData } from '@/types/battlecard';
 import {
@@ -15,6 +14,7 @@ import {
 
 interface GenerateStepProps {
   data: BattleCardData;
+  forceRegenerate: boolean;
   onComplete: (battleCard: BattleCardContent) => void;
   onBack: () => void;
 }
@@ -27,11 +27,10 @@ const steps = [
   { id: 5, label: 'Building your battle card...', duration: 0 },
 ];
 
-export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
+export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: GenerateStepProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-  const [forceRegenerate, setForceRegenerate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [battleCard, setBattleCard] = useState<BattleCardContent | null>(null);
   const { toast } = useToast();
@@ -143,21 +142,6 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
             : 'Configure options below, then click Generate'}
         </p>
       </div>
-
-      {!hasStarted && !error && (
-        <div className="max-w-md mx-auto p-5 rounded-xl bg-card border border-border space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">Force Regenerate</p>
-              <p className="text-sm text-muted-foreground">Bypass 7-day cache and generate a fresh card</p>
-            </div>
-            <Switch
-              checked={forceRegenerate}
-              onCheckedChange={setForceRegenerate}
-            />
-          </div>
-        </div>
-      )}
 
       <div className="max-w-md mx-auto">
         {error ? (

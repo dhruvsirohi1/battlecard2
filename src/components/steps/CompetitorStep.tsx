@@ -3,12 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Plus, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Competitor } from '@/types/battlecard';
 
 interface CompetitorStepProps {
   competitors: Competitor[];
   onCompetitorsChange: (competitors: Competitor[]) => void;
+  forceRegenerate: boolean;
+  onForceRegenerateChange: (value: boolean) => void;
   onNext: () => void;
 }
 
@@ -21,7 +24,7 @@ const validateUrl = (url: string): boolean => {
   }
 };
 
-export function CompetitorStep({ competitors, onCompetitorsChange, onNext }: CompetitorStepProps) {
+export function CompetitorStep({ competitors, onCompetitorsChange, forceRegenerate, onForceRegenerateChange, onNext }: CompetitorStepProps) {
   const [inputValue, setInputValue] = useState('');
 
   const addCompetitor = () => {
@@ -154,6 +157,17 @@ export function CompetitorStep({ competitors, onCompetitorsChange, onNext }: Com
             </p>
           </div>
         )}
+      </div>
+
+      <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-secondary/50 border border-border">
+        <div>
+          <p className="text-sm font-medium text-foreground">Force Regenerate</p>
+          <p className="text-xs text-muted-foreground">Bypass 7-day cache and generate a fresh card</p>
+        </div>
+        <Switch
+          checked={forceRegenerate}
+          onCheckedChange={onForceRegenerateChange}
+        />
       </div>
 
       <div className="flex justify-between items-center pt-4">

@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import type { BattleCardData } from '@/types/battlecard';
 
 /** Optional data URL for the header logo (e.g. from fetch + readAsDataURL). */
-export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: string) => {
+export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: string, download = true) => {
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -386,6 +386,6 @@ export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: 
 
   // Save
   const fileName = `BattleCard_${battleCard.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-  pdf.save(fileName);
+  if (download) pdf.save(fileName);
   return { fileName, base64: pdf.output('base64') };
 };

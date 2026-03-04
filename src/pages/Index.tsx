@@ -36,6 +36,7 @@ const Index = () => {
   
   // Form state
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [forceRegenerate, setForceRegenerate] = useState(false);
   const [useCase, setUseCase] = useState<UseCase>(null);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [template, setTemplate] = useState<TemplateType>('feature-grid');
@@ -78,6 +79,7 @@ const Index = () => {
     setCurrentStep('competitors');
     setCompletedSteps([]);
     setCompetitors([]);
+    setForceRegenerate(false);
     setUseCase(null);
     setDocuments([]);
     setTemplate('feature-grid');
@@ -131,6 +133,8 @@ const Index = () => {
                   key="competitors"
                   competitors={competitors}
                   onCompetitorsChange={setCompetitors}
+                  forceRegenerate={forceRegenerate}
+                  onForceRegenerateChange={setForceRegenerate}
                   onNext={goNext}
                 />
               )}
@@ -171,6 +175,7 @@ const Index = () => {
                 <GenerateStep
                   key="generate"
                   data={battleCardData}
+                  forceRegenerate={forceRegenerate}
                   onComplete={handleGenerationComplete}
                   onBack={goBack}
                 />

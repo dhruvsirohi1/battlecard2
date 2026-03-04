@@ -1,5 +1,5 @@
 import { exportProfessionalPDF } from '@/lib/exportProfessionalPDF';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Download,
@@ -27,6 +27,19 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>(['overview']);
   const battleCardRef = useRef<HTMLDivElement>(null);
   const shareUrl = `https://tuskira.app/cards/${battleCard.id.slice(-8)}`;
+
+  // Auto-save to Google Drive on mount (no local download)
+  useEffect(() => {
+    try {
+      const result = exportProfessionalPDF(battleCard, undefined, false);
+      if (result) {
+        uploadPDFToDrive(result.base64, result.fileName)
+          .catch(err => console.error('Drive auto-save error:', err));
+      }
+    } catch (err) {
+      console.error('PDF generation error during auto-save:', err);
+    }
+  }, []);
 
   const copyLink = async () => {
     try {

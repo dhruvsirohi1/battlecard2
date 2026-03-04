@@ -107,14 +107,16 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
     >
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
-          {error ? 'Generation Failed' : isComplete ? 'Your Battle Card is Ready!' : 'Generating Battlecard'}
+          {error ? 'Generation Failed' : isComplete ? 'Your Battle Card is Ready!' : hasStarted ? 'Generating Battlecard' : 'Ready to Generate'}
         </h2>
         <p className="text-muted-foreground">
           {error
             ? 'There was an error generating your battle card'
             : isComplete
             ? 'Your customized battle card has been created successfully'
-            : 'Please wait while we generate your card with AI'}
+            : hasStarted
+            ? 'Please wait while we generate your card with AI'
+            : 'Review your selections below, then click Generate'}
         </p>
       </div>
 
@@ -132,10 +134,33 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
               <p className="text-destructive">{error}</p>
             </div>
           </motion.div>
-        ) : !isComplete ? (
+        ) : hasStarted && !isComplete ? (
           <div className="flex flex-col items-center justify-center py-12 gap-6">
             <Loader2 className="w-16 h-16 text-primary animate-spin" />
             <p className="text-lg font-medium text-foreground">Generating Battlecard</p>
+          </div>
+        ) : !hasStarted ? (
+          <div className="p-6 rounded-xl bg-card border border-border space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Competitors</span>
+              <span className="text-foreground font-medium">{data.competitors.map(c => c.name).join(', ')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Use Case</span>
+              <span className="text-foreground font-medium uppercase">{data.useCase?.replace('-', ' ') || 'General'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Template</span>
+              <span className="text-foreground font-medium capitalize">{data.template.replace('-', ' ')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Sections</span>
+              <span className="text-foreground font-medium">{data.sections.filter(s => s.enabled).length} active</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Documents</span>
+              <span className="text-foreground font-medium">{data.documents.length}</span>
+            </div>
           </div>
         ) : (
           <motion.div

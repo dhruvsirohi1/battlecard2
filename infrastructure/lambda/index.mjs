@@ -28,10 +28,12 @@ const BATTLECARDS_TABLE   = "TuskiraBattleCards";
 const CACHE_DURATION_DAYS = 7;
 
 // ─── Set these via Lambda environment variables ───────────────────────────────
-// DRIVE_FOLDER_ID    : the part of the folder URL after /folders/
-// GOOGLE_SECRET_NAME : the Secrets Manager secret name holding the service account JSON
-const DRIVE_FOLDER_ID    = process.env.DRIVE_FOLDER_ID    || "YOUR_FOLDER_ID_HERE";
-const GOOGLE_SECRET_NAME = process.env.GOOGLE_SECRET_NAME || "tuskira/google-service-account";
+// DRIVE_FOLDER_ID         : folder ID for reading source docs (part of URL after /folders/)
+// BATTLECARDS_FOLDER_ID   : folder ID for saving exported PDFs (the "BattleCards" subfolder)
+// GOOGLE_SECRET_NAME      : Secrets Manager secret name holding the service account JSON
+const DRIVE_FOLDER_ID        = process.env.DRIVE_FOLDER_ID        || "YOUR_FOLDER_ID_HERE";
+const BATTLECARDS_FOLDER_ID  = process.env.BATTLECARDS_FOLDER_ID  || DRIVE_FOLDER_ID;
+const GOOGLE_SECRET_NAME     = process.env.GOOGLE_SECRET_NAME     || "tuskira/google-service-account";
 
 // Max characters to send per document (keeps context window manageable)
 const MAX_DOC_CHARS = 8000;
@@ -224,33 +226,16 @@ async function fetchDriveDocuments(competitorName) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// HELPER — Find the "BattleCards" subfolder within the configured Drive folder
-// ══════════════════════════════════════════════════════════════════════════════
-async function getBattleCardsFolderId(accessToken) {
-  const query = encodeURIComponent(
-    `'${DRIVE_FOLDER_ID}' in parents and name = 'BattleCards' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
-  );
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) throw new Error(`Drive folder lookup failed: ${await res.text()}`);
-  const { files } = await res.json();
-  if (!files?.length) throw new Error('"BattleCards" subfolder not found in Drive');
-  return files[0].id;
-}
-
-
-// ══════════════════════════════════════════════════════════════════════════════
-// UPLOAD — Save a PDF to the "BattleCards" subfolder in Google Drive
+// UPLOAD — Save a PDF to the BattleCards folder in Google Drive
+// Set BATTLECARDS_FOLDER_ID env var to the "BattleCards" subfolder ID
+// (found in the folder URL after /folders/). Falls back to DRIVE_FOLDER_ID.
 // ══════════════════════════════════════════════════════════════════════════════
 async function uploadPDFToDrive(accessToken, pdfBase64, filename) {
-  const folderId = await getBattleCardsFolderId(accessToken);
   const boundary = "boundary_" + Date.now();
   const metadata = JSON.stringify({
     name: filename,
     mimeType: "application/pdf",
-    parents: [folderId],
+    parents: [BATTLECARDS_FOLDER_ID],
   });
 
   const pdfBytes = Buffer.from(pdfBase64, "base64");

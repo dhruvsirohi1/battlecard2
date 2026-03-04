@@ -142,7 +142,8 @@ export async function generateBattleCard(data: {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to generate battle card');
+      const errText = await response.text().catch(() => '');
+      throw new Error(`Lambda error ${response.status}: ${errText}`);
     }
 
     return await response.json();

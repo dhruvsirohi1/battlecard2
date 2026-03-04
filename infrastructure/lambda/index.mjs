@@ -224,14 +224,33 @@ async function fetchDriveDocuments(competitorName) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// UPLOAD — Save a PDF to Google Drive in the configured folder
+// HELPER — Find the "BattleCards" subfolder within the configured Drive folder
+// ══════════════════════════════════════════════════════════════════════════════
+async function getBattleCardsFolderId(accessToken) {
+  const query = encodeURIComponent(
+    `'${DRIVE_FOLDER_ID}' in parents and name = 'BattleCards' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+  );
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id)`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) throw new Error(`Drive folder lookup failed: ${await res.text()}`);
+  const { files } = await res.json();
+  if (!files?.length) throw new Error('"BattleCards" subfolder not found in Drive');
+  return files[0].id;
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UPLOAD — Save a PDF to the "BattleCards" subfolder in Google Drive
 // ══════════════════════════════════════════════════════════════════════════════
 async function uploadPDFToDrive(accessToken, pdfBase64, filename) {
+  const folderId = await getBattleCardsFolderId(accessToken);
   const boundary = "boundary_" + Date.now();
   const metadata = JSON.stringify({
     name: filename,
     mimeType: "application/pdf",
-    parents: [DRIVE_FOLDER_ID],
+    parents: [folderId],
   });
 
   const pdfBytes = Buffer.from(pdfBase64, "base64");

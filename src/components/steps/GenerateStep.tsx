@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, CheckCircle2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { BattleCardData } from '@/types/battlecard';
-import { 
-  analyzeCompetitor, 
-  processDocument, 
+import {
+  analyzeCompetitor,
   generateBattleCard,
   type CompetitorAnalysis,
   type DocumentContent,
-  type BattleCardContent 
+  type BattleCardContent
 } from '@/services/aws';
 
 interface GenerateStepProps {
@@ -30,13 +30,11 @@ const steps = [
 export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [forceRegenerate, setForceRegenerate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [battleCard, setBattleCard] = useState<BattleCardContent | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    generateBattleCardAsync();
-  }, []);
 
   const generateBattleCardAsync = async (force = false) => {
     try {
@@ -133,16 +131,33 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
     >
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
-          {error ? 'Generation Failed' : isComplete ? 'Your Battle Card is Ready!' : 'Generating Battle Card'}
+          {error ? 'Generation Failed' : isComplete ? 'Your Battle Card is Ready!' : hasStarted ? 'Generating Battle Card' : 'Ready to Generate'}
         </h2>
         <p className="text-muted-foreground">
           {error
             ? 'There was an error generating your battle card'
             : isComplete
             ? 'Your customized battle card has been created successfully'
-            : 'Please wait while we analyze and generate your card with AI'}
+            : hasStarted
+            ? 'Please wait while we analyze and generate your card with AI'
+            : 'Configure options below, then click Generate'}
         </p>
       </div>
+
+      {!hasStarted && !error && (
+        <div className="max-w-md mx-auto p-5 rounded-xl bg-card border border-border space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-foreground">Force Regenerate</p>
+              <p className="text-sm text-muted-foreground">Bypass 7-day cache and generate a fresh card</p>
+            </div>
+            <Switch
+              checked={forceRegenerate}
+              onCheckedChange={setForceRegenerate}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="max-w-md mx-auto">
         {error ? (
@@ -247,7 +262,7 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
       </div>
 
       <div className="flex justify-between items-center pt-4">
-        <Button variant="outline" size="lg" onClick={onBack} disabled={!isComplete && !error}>
+        <Button variant="outline" size="lg" onClick={onBack} disabled={hasStarted && !isComplete && !error}>
           Back
         </Button>
         {error ? (
@@ -257,37 +272,32 @@ export function GenerateStep({ data, onComplete, onBack }: GenerateStepProps) {
             onClick={() => {
               setError(null);
               setCurrentStep(0);
-              generateBattleCardAsync();
+              setHasStarted(true);
+              generateBattleCardAsync(forceRegenerate);
             }}
           >
             Try Again
           </Button>
+        ) : !hasStarted ? (
+          <Button
+            variant="hero"
+            size="lg"
+            onClick={() => {
+              setHasStarted(true);
+              generateBattleCardAsync(forceRegenerate);
+            }}
+          >
+            Generate
+          </Button>
         ) : (
-          <div className="flex items-center gap-3">
-            {isComplete && (
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => {
-                  setIsComplete(false);
-                  setBattleCard(null);
-                  setCurrentStep(0);
-                  generateBattleCardAsync(true);
-                }}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Force Regenerate
-              </Button>
-            )}
-            <Button
-              variant="hero"
-              size="lg"
-              onClick={() => battleCard && onComplete(battleCard)}
-              disabled={!isComplete}
-            >
-              View & Export
-            </Button>
-          </div>
+          <Button
+            variant="hero"
+            size="lg"
+            onClick={() => battleCard && onComplete(battleCard)}
+            disabled={!isComplete}
+          >
+            View & Export
+          </Button>
         )}
       </div>
     </motion.div>

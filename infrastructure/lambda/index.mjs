@@ -522,6 +522,8 @@ export const handler = async (event) => {
     // ─── PDF UPLOAD ACTION ────────────────────────────────────────────────────
     if (body.action === "upload-pdf") {
       const { pdfBase64, filename } = body;
+      console.log(`[upload-pdf] filename=${filename}, pdfBase64 type=${typeof pdfBase64}, length=${pdfBase64?.length ?? 'null/undefined'}`);
+      if (!pdfBase64) return respond(400, { error: "pdfBase64 is missing or null" });
       const accessToken = await getGoogleAccessToken();
       const result = await uploadPDFToDrive(accessToken, pdfBase64, filename);
       return respond(200, result);
@@ -530,6 +532,8 @@ export const handler = async (event) => {
     // ─── DOCUMENT UPLOAD ACTION ───────────────────────────────────────────────
     if (body.action === "upload-doc") {
       const { fileBase64, fileName, mimeType, useCase = "ctem" } = body;
+      console.log(`[upload-doc] fileName=${fileName}, mimeType=${mimeType}, fileBase64 type=${typeof fileBase64}, length=${fileBase64?.length ?? 'null/undefined'}`);
+      if (!fileBase64) return respond(400, { error: "fileBase64 is missing or null" });
       const accessToken = await getGoogleAccessToken();
       const folderId = getUseCaseFolderId(useCase);
       const result = await uploadFileToDrive(accessToken, fileBase64, fileName, mimeType, folderId);

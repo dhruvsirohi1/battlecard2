@@ -32,9 +32,12 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   useEffect(() => {
     try {
       const result = exportProfessionalPDF(battleCard, undefined, false);
-      if (result) {
+      console.log('[auto-save] PDF result:', result?.fileName, 'base64 length:', result?.base64?.length ?? 'null/undefined');
+      if (result?.base64) {
         uploadPDFToDrive(result.base64, result.fileName)
           .catch(err => console.error('Drive auto-save error:', err));
+      } else {
+        console.error('[auto-save] base64 is null/undefined — skipping upload');
       }
     } catch (err) {
       console.error('PDF generation error during auto-save:', err);

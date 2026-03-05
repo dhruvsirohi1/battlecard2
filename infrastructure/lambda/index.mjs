@@ -104,7 +104,7 @@ async function listDriveFiles(accessToken, competitorName, folderId = DRIVE_FOLD
   const fields = encodeURIComponent("files(id,name,mimeType,modifiedTime)");
 
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&pageSize=20`,
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&pageSize=20&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
@@ -126,21 +126,21 @@ async function extractFileText(accessToken, file) {
     if (mimeType === "application/vnd.google-apps.document" ||
         mimeType === "application/vnd.google-apps.presentation") {
       const res = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text/plain`,
+        `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text/plain&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       content = await res.text();
 
     } else if (mimeType === "application/vnd.google-apps.spreadsheet") {
       const res = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text/csv`,
+        `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text/csv&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       content = await res.text();
 
     } else if (mimeType === "application/pdf") {
       const res         = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+        `https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const base64 = Buffer.from(await res.arrayBuffer()).toString("base64");
@@ -148,7 +148,7 @@ async function extractFileText(accessToken, file) {
 
     } else if (mimeType.includes("wordprocessingml") || mimeType === "application/msword") {
       const res         = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+        `https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const base64 = Buffer.from(await res.arrayBuffer()).toString("base64");
@@ -160,7 +160,7 @@ async function extractFileText(accessToken, file) {
 
     } else if (mimeType.startsWith("text/")) {
       const res = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+        `https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       content = await res.text();
@@ -251,7 +251,7 @@ async function uploadFileToDrive(accessToken, fileBase64, fileName, mimeType, fo
   ]);
 
   const res = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink",
     {
       method: "POST",
       headers: {

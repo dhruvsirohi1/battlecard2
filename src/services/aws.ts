@@ -232,7 +232,8 @@ export async function uploadPDFToDrive(pdfBase64: string, filename: string): Pro
   });
 
   if (!response.ok) {
-    throw new Error('Failed to upload PDF to Drive');
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Failed to upload PDF to Drive (${response.status}): ${errText}`);
   }
 }
 

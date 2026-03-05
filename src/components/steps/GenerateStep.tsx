@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,48 @@ interface GenerateStepProps {
 }
 
 
+const STAGES = [
+  { label: 'Checking cache...',               duration: 3000  },
+  { label: 'Parsing Google Drive docs...',    duration: 8000  },
+  { label: 'Scraping competitor website...',  duration: 25000 },
+  { label: 'Writing battlecard with AI...',   duration: Infinity },
+];
+
 export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: GenerateStepProps) {
   const [isComplete, setIsComplete] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [stageIndex, setStageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [battleCard, setBattleCard] = useState<BattleCardContent | null>(null);
   const { toast } = useToast();
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (!hasStarted || isComplete || error) return;
+
+    // Schedule stage transitions
+    let elapsed = 0;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+
+    STAGES.forEach((stage, i) => {
+      if (i === 0 || stage.duration === Infinity) return;
+      elapsed += STAGES[i - 1].duration === Infinity ? 0 : STAGES[i - 1].duration;
+      const t = setTimeout(() => setStageIndex(i), elapsed);
+      timersRef.current.push(t);
+    });
+
+    // Advance to last stage after all timed ones
+    const totalTimed = STAGES.slice(0, -1).reduce((sum, s) => sum + (s.duration === Infinity ? 0 : s.duration), 0);
+    const last = setTimeout(() => setStageIndex(STAGES.length - 1), totalTimed);
+    timersRef.current.push(last);
+
+    return () => timersRef.current.forEach(clearTimeout);
+  }, [hasStarted]);
+
+  useEffect(() => {
+    if (isComplete || error) timersRef.current.forEach(clearTimeout);
+  }, [isComplete, error]);
 
   const generateBattleCardAsync = async (force = false) => {
     try {
@@ -137,7 +173,16 @@ export function GenerateStep({ data, forceRegenerate, onComplete, onBack }: Gene
         ) : hasStarted && !isComplete ? (
           <div className="flex flex-col items-center justify-center py-12 gap-6">
             <Loader2 className="w-16 h-16 text-primary animate-spin" />
-            <p className="text-lg font-medium text-foreground">Generating Battlecard</p>
+            <motion.p
+              key={stageIndex}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.3 }}
+              className="text-lg font-medium text-foreground"
+            >
+              {STAGES[stageIndex].label}
+            </motion.p>
           </div>
         ) : !hasStarted ? (
           <div className="p-6 rounded-xl bg-card border border-border space-y-3 text-sm">

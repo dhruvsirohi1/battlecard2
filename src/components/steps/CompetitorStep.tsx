@@ -208,11 +208,8 @@ export function CompetitorStep({ competitors, onCompetitorsChange, forceRegenera
       )}
 
       {/* Force Regenerate toggle */}
-      <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-secondary/50 border border-border">
-        <div>
-          <p className="text-sm font-medium text-foreground">Force Regenerate</p>
-          <p className="text-xs text-muted-foreground">Bypass 7-day cache and generate a fresh card</p>
-        </div>
+      <div className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/50 border border-border">
+        <span className="text-sm text-muted-foreground">Force regenerate <span className="text-xs">(bypass 7-day cache)</span></span>
         <Switch checked={forceRegenerate} onCheckedChange={onForceRegenerateChange} />
       </div>
 

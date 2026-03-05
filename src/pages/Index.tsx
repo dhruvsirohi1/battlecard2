@@ -154,6 +154,7 @@ const Index = () => {
                   key="documents"
                   documents={documents}
                   onDocumentsChange={setDocuments}
+                  useCase={useCase}
                   onNext={goNext}
                   onBack={goBack}
                 />

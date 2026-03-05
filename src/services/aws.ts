@@ -199,6 +199,29 @@ export async function getBattleCards(): Promise<BattleCardContent[]> {
 }
 
 /**
+ * Upload a user document to the appropriate use-case Drive folder via Lambda
+ */
+export async function uploadDocumentToDrive(file: File, useCase: string): Promise<void> {
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+  });
+
+  const response = await fetch(awsconfig.API.endpoints[0].endpoint + '/generate-battlecard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'upload-doc', fileBase64: base64, fileName: file.name, mimeType: file.type, useCase }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`Failed to upload document (${response.status}): ${errText}`);
+  }
+}
+
+/**
  * Upload a PDF to Google Drive via Lambda
  */
 export async function uploadPDFToDrive(pdfBase64: string, filename: string): Promise<void> {

@@ -1,13 +1,15 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, File, AlertCircle } from 'lucide-react';
+import { Upload, FileText, X, File, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { UploadedDocument } from '@/types/battlecard';
+import type { UploadedDocument, UseCase } from '@/types/battlecard';
+import { uploadDocumentToDrive } from '@/services/aws';
 
 interface DocumentStepProps {
   documents: UploadedDocument[];
   onDocumentsChange: (documents: UploadedDocument[]) => void;
+  useCase: UseCase;
   onNext: () => void;
   onBack: () => void;
 }
@@ -26,55 +28,70 @@ const formatFileSize = (bytes: number): string => {
 
 const getFileIcon = (type: string) => {
   switch (type) {
-    case 'pdf':
-      return <FileText className="w-5 h-5 text-destructive" />;
-    case 'docx':
-      return <FileText className="w-5 h-5 text-info" />;
-    case 'pptx':
-      return <File className="w-5 h-5 text-warning" />;
-    default:
-      return <File className="w-5 h-5" />;
+    case 'pdf':  return <FileText className="w-5 h-5 text-destructive" />;
+    case 'docx': return <FileText className="w-5 h-5 text-info" />;
+    case 'pptx': return <File className="w-5 h-5 text-warning" />;
+    default:     return <File className="w-5 h-5" />;
   }
 };
 
-export function DocumentStep({ documents, onDocumentsChange, onNext, onBack }: DocumentStepProps) {
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const files = Array.from(e.dataTransfer.files);
-    processFiles(files);
-  }, [documents]);
+export function DocumentStep({ documents, onDocumentsChange, useCase, onNext, onBack }: DocumentStepProps) {
+  const [uploadingIds, setUploadingIds] = useState<Set<string>>(new Set());
+  const [errorIds, setErrorIds] = useState<Set<string>>(new Set());
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      processFiles(files);
-    }
-  }, [documents]);
+  const processFiles = useCallback((files: File[]) => {
+    const newDocs: Array<{ doc: UploadedDocument; file: File }> = [];
 
-  const processFiles = (files: File[]) => {
-    const newDocs: UploadedDocument[] = [];
-    
     files.forEach(file => {
       const fileType = acceptedTypes[file.type as keyof typeof acceptedTypes];
       if (fileType) {
         newDocs.push({
-          id: crypto.randomUUID(),
-          name: file.name,
-          type: fileType as 'pdf' | 'docx' | 'pptx',
-          size: file.size,
-          uploadedAt: new Date(),
+          doc: {
+            id: crypto.randomUUID(),
+            name: file.name,
+            type: fileType as 'pdf' | 'docx' | 'pptx',
+            size: file.size,
+            uploadedAt: new Date(),
+          },
+          file,
         });
       }
     });
 
-    if (newDocs.length > 0) {
-      onDocumentsChange([...documents, ...newDocs]);
-    }
-  };
+    if (newDocs.length === 0) return;
+
+    onDocumentsChange([...documents, ...newDocs.map(d => d.doc)]);
+
+    // Upload each file to Drive
+    newDocs.forEach(({ doc, file }) => {
+      setUploadingIds(prev => new Set(prev).add(doc.id));
+      uploadDocumentToDrive(file, useCase || 'ctem')
+        .then(() => {
+          setUploadingIds(prev => { const s = new Set(prev); s.delete(doc.id); return s; });
+        })
+        .catch(() => {
+          setUploadingIds(prev => { const s = new Set(prev); s.delete(doc.id); return s; });
+          setErrorIds(prev => new Set(prev).add(doc.id));
+        });
+    });
+  }, [documents, useCase]);
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    processFiles(Array.from(e.dataTransfer.files));
+  }, [processFiles]);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) processFiles(Array.from(e.target.files));
+  }, [processFiles]);
 
   const removeDocument = (id: string) => {
     onDocumentsChange(documents.filter(d => d.id !== id));
+    setUploadingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    setErrorIds(prev => { const s = new Set(prev); s.delete(id); return s; });
   };
+
+  const isUploading = uploadingIds.size > 0;
 
   return (
     <motion.div
@@ -86,7 +103,9 @@ export function DocumentStep({ documents, onDocumentsChange, onNext, onBack }: D
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">Upload Supporting Documents</h2>
         <p className="text-muted-foreground">
-          Add PDFs, Word docs, or PowerPoints for deeper competitive analysis
+          Add PDFs, Word docs, or PowerPoints — saved to your{' '}
+          <span className="font-medium text-foreground">{useCase === 'ai-soc' ? 'aisoc' : 'ctem'}</span>{' '}
+          Drive folder for AI reference
         </p>
       </div>
 
@@ -106,18 +125,13 @@ export function DocumentStep({ documents, onDocumentsChange, onNext, onBack }: D
           onChange={handleFileInput}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
-        
         <div className="space-y-4">
           <div className="w-16 h-16 mx-auto rounded-full bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
             <Upload className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
           <div>
-            <p className="text-foreground font-medium">
-              Drop files here or click to upload
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Supports PDF, DOCX, and PPTX files
-            </p>
+            <p className="text-foreground font-medium">Drop files here or click to upload</p>
+            <p className="text-sm text-muted-foreground mt-1">Supports PDF, DOCX, and PPTX files</p>
           </div>
         </div>
       </div>
@@ -153,26 +167,37 @@ export function DocumentStep({ documents, onDocumentsChange, onNext, onBack }: D
                   </p>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeDocument(doc.id)}
-                  className="shrink-0 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {uploadingIds.has(doc.id) ? (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Saving to Drive...
+                    </span>
+                  ) : errorIds.has(doc.id) ? (
+                    <span className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      Upload failed
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs text-success">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Saved to Drive
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeDocument(doc.id)}
+                    className="hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
               </motion.div>
             ))}
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="flex items-center gap-2 p-4 rounded-lg bg-muted/50 border border-border">
-        <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0" />
-        <p className="text-sm text-muted-foreground">
-          Documents are processed securely and automatically deleted after card generation
-        </p>
-      </div>
 
       <div className="flex justify-between items-center pt-4">
         <Button variant="outline" size="lg" onClick={onBack}>
@@ -182,8 +207,8 @@ export function DocumentStep({ documents, onDocumentsChange, onNext, onBack }: D
           <Button variant="secondary" size="lg" onClick={onNext}>
             Skip
           </Button>
-          <Button variant="hero" size="lg" onClick={onNext}>
-            Continue
+          <Button variant="hero" size="lg" onClick={onNext} disabled={isUploading}>
+            {isUploading ? 'Uploading...' : 'Continue'}
           </Button>
         </div>
       </div>

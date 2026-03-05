@@ -28,12 +28,22 @@ const BATTLECARDS_TABLE   = "TuskiraBattleCards";
 const CACHE_DURATION_DAYS = 7;
 
 // ─── Set these via Lambda environment variables ───────────────────────────────
-// DRIVE_FOLDER_ID         : folder ID for reading source docs (part of URL after /folders/)
-// BATTLECARDS_FOLDER_ID   : folder ID for saving exported PDFs (the "BattleCards" subfolder)
+// DRIVE_FOLDER_ID         : root Drive folder ID (fallback)
+// BATTLECARDS_FOLDER_ID   : folder ID for saving exported PDFs ("BattleCards" subfolder)
+// CTEM_FOLDER_ID          : folder ID for CTEM use-case documents ("ctem" subfolder)
+// AISOC_FOLDER_ID         : folder ID for AI-SOC use-case documents ("aisoc" subfolder)
 // GOOGLE_SECRET_NAME      : Secrets Manager secret name holding the service account JSON
 const DRIVE_FOLDER_ID        = process.env.DRIVE_FOLDER_ID        || "YOUR_FOLDER_ID_HERE";
 const BATTLECARDS_FOLDER_ID  = process.env.BATTLECARDS_FOLDER_ID  || DRIVE_FOLDER_ID;
+const CTEM_FOLDER_ID         = process.env.CTEM_FOLDER_ID         || DRIVE_FOLDER_ID;
+const AISOC_FOLDER_ID        = process.env.AISOC_FOLDER_ID        || DRIVE_FOLDER_ID;
 const GOOGLE_SECRET_NAME     = process.env.GOOGLE_SECRET_NAME     || "tuskira/google-service-account";
+
+function getUseCaseFolderId(useCase) {
+  if (useCase === "ctem")   return CTEM_FOLDER_ID;
+  if (useCase === "ai-soc") return AISOC_FOLDER_ID;
+  return DRIVE_FOLDER_ID;
+}
 
 // Max characters to send per document (keeps context window manageable)
 const MAX_DOC_CHARS = 8000;
@@ -86,11 +96,11 @@ async function getGoogleAccessToken() {
 // ══════════════════════════════════════════════════════════════════════════════
 // STEP 1a — List files in Drive folder, filtered by competitor name
 // ══════════════════════════════════════════════════════════════════════════════
-async function listDriveFiles(accessToken, competitorName) {
+async function listDriveFiles(accessToken, competitorName, folderId = DRIVE_FOLDER_ID) {
   const nameFilter = competitorName
     ? ` and name contains '${competitorName.replace(/'/g, "\\'")}'`
     : "";
-  const query  = encodeURIComponent(`'${DRIVE_FOLDER_ID}' in parents and trashed = false${nameFilter}`);
+  const query  = encodeURIComponent(`'${folderId}' in parents and trashed = false${nameFilter}`);
   const fields = encodeURIComponent("files(id,name,mimeType,modifiedTime)");
 
   const res = await fetch(
@@ -206,14 +216,15 @@ async function extractBinaryWithBedrock(base64Data, mediaType, filename) {
 // ══════════════════════════════════════════════════════════════════════════════
 // STEP 1 (orchestrator) — Fetch all relevant Drive docs for a competitor
 // ══════════════════════════════════════════════════════════════════════════════
-async function fetchDriveDocuments(competitorName) {
-  console.log(`Fetching Drive documents for: ${competitorName}`);
+async function fetchDriveDocuments(competitorName, useCase) {
+  const folderId = getUseCaseFolderId(useCase);
+  console.log(`Fetching Drive documents for: ${competitorName} — folder: ${folderId} (${useCase})`);
   const accessToken = await getGoogleAccessToken();
 
-  let files = await listDriveFiles(accessToken, competitorName);
+  let files = await listDriveFiles(accessToken, competitorName, folderId);
   if (files.length === 0) {
-    console.log("No competitor-specific files found — fetching all folder files");
-    files = await listDriveFiles(accessToken, null);
+    console.log("No competitor-specific files found — fetching all files in use-case folder");
+    files = await listDriveFiles(accessToken, null, folderId);
   }
   console.log(`Found ${files.length} Drive files`);
 
@@ -226,23 +237,16 @@ async function fetchDriveDocuments(competitorName) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// UPLOAD — Save a PDF to the BattleCards folder in Google Drive
-// Set BATTLECARDS_FOLDER_ID env var to the "BattleCards" subfolder ID
-// (found in the folder URL after /folders/). Falls back to DRIVE_FOLDER_ID.
+// UPLOAD — Generic helper to upload any file to a Drive folder
 // ══════════════════════════════════════════════════════════════════════════════
-async function uploadPDFToDrive(accessToken, pdfBase64, filename) {
+async function uploadFileToDrive(accessToken, fileBase64, fileName, mimeType, folderId) {
   const boundary = "boundary_" + Date.now();
-  const metadata = JSON.stringify({
-    name: filename,
-    mimeType: "application/pdf",
-    parents: [BATTLECARDS_FOLDER_ID],
-  });
-
-  const pdfBytes = Buffer.from(pdfBase64, "base64");
+  const metadata = JSON.stringify({ name: fileName, mimeType, parents: [folderId] });
+  const fileBytes = Buffer.from(fileBase64, "base64");
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`),
-    Buffer.from(`--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`),
-    pdfBytes,
+    Buffer.from(`--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`),
+    fileBytes,
     Buffer.from(`\r\n--${boundary}--`),
   ]);
 
@@ -260,6 +264,10 @@ async function uploadPDFToDrive(accessToken, pdfBase64, filename) {
 
   if (!res.ok) throw new Error(`Drive upload failed: ${await res.text()}`);
   return await res.json();
+}
+
+async function uploadPDFToDrive(accessToken, pdfBase64, filename) {
+  return uploadFileToDrive(accessToken, pdfBase64, filename, "application/pdf", BATTLECARDS_FOLDER_ID);
 }
 
 
@@ -519,6 +527,15 @@ export const handler = async (event) => {
       return respond(200, result);
     }
 
+    // ─── DOCUMENT UPLOAD ACTION ───────────────────────────────────────────────
+    if (body.action === "upload-doc") {
+      const { fileBase64, fileName, mimeType, useCase = "ctem" } = body;
+      const accessToken = await getGoogleAccessToken();
+      const folderId = getUseCaseFolderId(useCase);
+      const result = await uploadFileToDrive(accessToken, fileBase64, fileName, mimeType, folderId);
+      return respond(200, result);
+    }
+
     // ─── BATTLE CARD GENERATION ───────────────────────────────────────────────
     const { competitors = [], useCase = "ctem", forceRegenerate = false } = body;
     const competitor     = competitors[0] || { name: "Competitor" };
@@ -551,7 +568,7 @@ export const handler = async (event) => {
     // ─── STEP 1: GOOGLE DRIVE ─────────────────────────────────────────────────
     let driveDocuments = [];
     try {
-      driveDocuments = await fetchDriveDocuments(competitorName);
+      driveDocuments = await fetchDriveDocuments(competitorName, useCase);
     } catch (e) {
       console.error("Drive fetch failed (non-fatal):", e.message);
     }

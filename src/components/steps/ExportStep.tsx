@@ -1,12 +1,12 @@
 import { exportProfessionalPDF } from '@/lib/exportProfessionalPDF';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Download,
   Link2,
   Copy,
   Check,
   FileText,
+  CloudUpload,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -24,25 +24,11 @@ interface ExportStepProps {
 
 export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
   const [copied, setCopied] = useState(false);
+  const [driveUploading, setDriveUploading] = useState(false);
+  const [driveUploaded, setDriveUploaded] = useState(false);
   const [expandedSections, setExpandedSections] = useState<string[]>(['overview']);
   const battleCardRef = useRef<HTMLDivElement>(null);
   const shareUrl = `https://tuskira.app/cards/${battleCard.id.slice(-8)}`;
-
-  // Auto-save to Google Drive on mount (no local download)
-  useEffect(() => {
-    try {
-      const result = exportProfessionalPDF(battleCard, undefined, false);
-      console.log('[auto-save] PDF result:', result?.fileName, 'base64 length:', result?.base64?.length ?? 'null/undefined');
-      if (result?.base64) {
-        uploadPDFToDrive(result.base64, result.fileName)
-          .catch(err => console.error('Drive auto-save error:', err));
-      } else {
-        console.error('[auto-save] base64 is null/undefined — skipping upload');
-      }
-    } catch (err) {
-      console.error('PDF generation error during auto-save:', err);
-    }
-  }, []);
 
   const copyLink = async () => {
     try {
@@ -63,35 +49,30 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
     );
   };
 
-  const exportToPDF = () => {
-    if (!battleCard) {
-      alert('No battle card data');
-      return;
-    }
-
+  const downloadPDF = () => {
     try {
-      const result = exportProfessionalPDF(battleCard);
-      if (result) {
-        uploadPDFToDrive(result.base64, result.fileName)
-          .catch(err => console.error('Drive upload error:', err));
-      }
-    } catch (error) {
-      console.error('PDF export error:', error);
-      alert('Failed to export PDF');
+      exportProfessionalPDF(battleCard);
+    } catch (err) {
+      console.error('PDF export error:', err);
+      toast.error('Failed to generate PDF');
     }
   };
 
-  const exportToJSON = () => {
-    const dataStr = JSON.stringify(battleCard, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    const exportFileDefaultName = `battle-card-${battleCard.id}.json`;
-
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-
-    toast.success('JSON downloaded successfully!');
+  const exportToDrive = async () => {
+    setDriveUploading(true);
+    setDriveUploaded(false);
+    try {
+      const result = exportProfessionalPDF(battleCard, undefined, false);
+      if (!result?.base64) throw new Error('PDF generation returned no data');
+      await uploadPDFToDrive(result.base64, result.fileName);
+      setDriveUploaded(true);
+      toast.success('Saved to Google Drive!');
+    } catch (err) {
+      console.error('Drive upload error:', err);
+      toast.error('Failed to save to Drive');
+    } finally {
+      setDriveUploading(false);
+    }
   };
 
   return (
@@ -137,27 +118,30 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
           <Button
             variant="outline"
             className="h-auto py-4 justify-start gap-4"
-            onClick={exportToPDF}
+            onClick={downloadPDF}
           >
             <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
               <FileText className="w-5 h-5 text-destructive" />
             </div>
             <div className="text-left">
               <p className="font-medium">Download PDF</p>
-              <p className="text-sm text-muted-foreground">Printable format</p>
+              <p className="text-sm text-muted-foreground">Save locally</p>
             </div>
           </Button>
           <Button
             variant="outline"
             className="h-auto py-4 justify-start gap-4"
-            onClick={exportToJSON}
+            onClick={exportToDrive}
+            disabled={driveUploading}
           >
             <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center">
-              <Download className="w-5 h-5 text-info" />
+              <CloudUpload className="w-5 h-5 text-info" />
             </div>
             <div className="text-left">
-              <p className="font-medium">Download JSON</p>
-              <p className="text-sm text-muted-foreground">Raw data format</p>
+              <p className="font-medium">
+                {driveUploading ? 'Saving...' : driveUploaded ? 'Saved to Drive ✓' : 'Export PDF to Drive'}
+              </p>
+              <p className="text-sm text-muted-foreground">Save to BattleCards folder</p>
             </div>
           </Button>
         </div>

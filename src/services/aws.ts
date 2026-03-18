@@ -42,6 +42,7 @@ export interface BattleCardContent {
   objections: Array<{ objection: string; response: string }>;
   questions: string[];
   testimonials: Array<{ company: string; quote: string }>;
+  bibliography?: Array<{ title: string; url: string }>;
   generatedAt: string;
   fromCache?: boolean;
   cacheAge?: string;

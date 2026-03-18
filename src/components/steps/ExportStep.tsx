@@ -367,6 +367,43 @@ export function ExportStep({ battleCard, onBack, onReset }: ExportStepProps) {
             )}
           </Card>
         )}
+
+        {/* Sources & Bibliography */}
+        {battleCard.bibliography && battleCard.bibliography.length > 0 && (
+          <Card className="bg-secondary/50">
+            <CardHeader className="cursor-pointer" onClick={() => toggleSection('bibliography')}>
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span>Sources &amp; Bibliography</span>
+                {expandedSections.includes('bibliography') ? (
+                  <ChevronUp className="w-5 h-5" />
+                ) : (
+                  <ChevronDown className="w-5 h-5" />
+                )}
+              </CardTitle>
+            </CardHeader>
+            {expandedSections.includes('bibliography') && (
+              <CardContent>
+                <ul className="space-y-2">
+                  {Array.from(
+                    new Map(battleCard.bibliography.map(s => [s.url, s])).values()
+                  ).map((s) => (
+                    <li key={s.url} className="text-sm">
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        {s.title || s.url}
+                      </a>
+                      <div className="text-xs text-muted-foreground break-all">{s.url}</div>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* Actions */}

@@ -1,8 +1,8 @@
 import { jsPDF } from 'jspdf';
-import type { BattleCardData } from '@/types/battlecard';
+import type { BattleCardContent } from '@/services/aws';
 
 /** Optional data URL for the header logo (e.g. from fetch + readAsDataURL). */
-export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: string, download = true) => {
+export const exportProfessionalPDF = (battleCard: BattleCardContent, logoDataUrl?: string, download = true) => {
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -373,6 +373,35 @@ export const exportProfessionalPDF = (battleCard: BattleCardData, logoDataUrl?: 
 
     y += testimonialBoxHeight + 4;
   });
+
+  // 8. Sources & Bibliography
+  const bibliography = (battleCard.bibliography || [])
+    .filter(s => s?.url)
+    .reduce<Array<{ title: string; url: string }>>((acc, s) => {
+      if (acc.some(x => x.url === s.url)) return acc;
+      acc.push({ title: s.title || s.url, url: s.url });
+      return acc;
+    }, []);
+
+  if (bibliography.length > 0) {
+    checkPageBreak(50);
+    drawSectionHeader('Sources & Bibliography');
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(...COLORS.textDark);
+
+    bibliography.forEach((s) => {
+      const line = `${s.title} — ${s.url}`;
+      const lines = pdf.splitTextToSize(line, contentWidth);
+      const needed = (lines.length * 4) + 3;
+      checkPageBreak(needed + 10);
+      pdf.text(lines, margin, y);
+      y += needed;
+    });
+
+    y += 6;
+  }
 
   // --- FOOTER / PAGE NUMBERS ---
   const totalPages = pdf.getNumberOfPages();

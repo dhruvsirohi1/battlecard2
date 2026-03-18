@@ -4,6 +4,10 @@ export interface Competitor {
   name: string;
   isValid: boolean;
   isLoading: boolean;
+  /** Optional: from brand search, for badge display */
+  icon?: string | null;
+  claimed?: boolean;
+  domain?: string;
 }
 
 export type UseCase = 'ctem' | 'ai-soc' | null;

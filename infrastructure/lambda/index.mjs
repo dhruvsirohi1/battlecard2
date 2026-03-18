@@ -38,6 +38,47 @@ const BATTLECARDS_FOLDER_ID  = process.env.BATTLECARDS_FOLDER_ID  || DRIVE_FOLDE
 const CTEM_FOLDER_ID         = process.env.CTEM_FOLDER_ID         || DRIVE_FOLDER_ID;
 const AISOC_FOLDER_ID        = process.env.AISOC_FOLDER_ID        || DRIVE_FOLDER_ID;
 const GOOGLE_SECRET_NAME     = process.env.GOOGLE_SECRET_NAME     || "tuskira/google-service-account";
+const TAVILY_API_KEY         = process.env.TAVILY_API_KEY;
+
+async function callTavily(query) {
+  if (!TAVILY_API_KEY) {
+    throw new Error("Missing required env var: TAVILY_API_KEY");
+  }
+  if (!query || typeof query !== "string") {
+    throw new Error("callTavily(query) requires a non-empty string query");
+  }
+
+  const res = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${TAVILY_API_KEY}`
+    },
+    body: JSON.stringify({
+      query,
+      search_depth: "advanced",
+      max_results: 8,
+      include_answer: false,
+      include_images: false,
+      include_raw_content: false
+    })
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Tavily search failed (${res.status}): ${errText}`);
+  }
+
+  const data = await res.json();
+  const results = Array.isArray(data?.results) ? data.results : [];
+
+  // Ensure title/url/content are present in the payload we send back to the model.
+  return results.map(r => ({
+    title: typeof r?.title === "string" ? r.title : "",
+    url: typeof r?.url === "string" ? r.url : "",
+    content: typeof r?.content === "string" ? r.content : (typeof r?.raw_content === "string" ? r.raw_content : "")
+  })).filter(r => r.url);
+}
 
 function getUseCaseFolderId(useCase) {
   if (useCase === "ctem")   return CTEM_FOLDER_ID;
@@ -326,6 +367,7 @@ Return ONLY valid JSON (no markdown):
   let finalTextBlock = null;
   let turnCount      = 0;
   const MAX_TURNS    = 10;
+  const bibliographyByUrl = new Map();
 
   while (turnCount < MAX_TURNS) {
     turnCount++;
@@ -371,9 +413,22 @@ Return ONLY valid JSON (no markdown):
       for (const block of toolUseBlocks) {
         const { toolUseId, input } = block.toolUse;
         console.log(`[WEB SCRAPE] Executing tool "web_search" — query: "${input.query}"`);
+        const tavilyResults = await callTavily(input.query);
+
+        for (const r of tavilyResults) {
+          if (r?.url && !bibliographyByUrl.has(r.url)) {
+            bibliographyByUrl.set(r.url, r.title || r.url);
+          }
+        }
+
         toolResults.push({
           toolUseId,
-          content: [{ text: `Search executed for: ${input.query}` }]
+          content: [{
+            text: JSON.stringify({
+              query: input.query,
+              results: tavilyResults
+            })
+          }]
         });
       }
 
@@ -417,6 +472,7 @@ Return ONLY valid JSON (no markdown):
   console.log(`  Sources:       (${(parsed.sources || []).length} URLs)`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
+  parsed.bibliography = Array.from(bibliographyByUrl.entries()).map(([url, title]) => ({ title, url }));
   return parsed;
 }
 
@@ -613,6 +669,7 @@ export const handler = async (event) => {
       webResearch:    scrapedData.sources || [],
       driveDocuments: driveDocuments.map(d => d.name)
     };
+    battleCard.bibliography = scrapedData.bibliography || [];
 
     // ─── SAVE TO DYNAMODB ──────────────────────────────────────────────────────
     try {

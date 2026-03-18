@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader2, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Competitor } from '@/types/battlecard';
+import { searchBrands, isBrandfetchConfigured, type BrandSearchResult } from '@/services/brandfetch';
 
 interface CompetitorStepProps {
   competitors: Competitor[];
@@ -57,33 +58,66 @@ const KNOWN_COMPETITORS = [
   { name: 'Claroty',              domain: 'claroty.com' },
 ];
 
+/** Unified suggestion item: local (name + domain) or Brandfetch (name, domain, optional icon, claimed) */
+type SuggestionItem = { name: string; domain: string; icon?: string | null; claimed?: boolean };
+
+const SEARCH_DEBOUNCE_MS = 320;
+const MIN_QUERY_LENGTH = 2;
+
 export function CompetitorStep({ competitors, onCompetitorsChange, forceRegenerate, onForceRegenerateChange, onNext }: CompetitorStepProps) {
   const selected = competitors[0] ?? null;
-  const [query, setQuery] = useState(selected?.name ?? '');
+  const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  const [apiResults, setApiResults] = useState<BrandSearchResult[]>([]);
+  const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const suggestions = query.trim().length > 0
+  const useLiveSearch = isBrandfetchConfigured();
+
+  // Debounced Brandfetch search
+  useEffect(() => {
+    if (!useLiveSearch || query.trim().length < MIN_QUERY_LENGTH) {
+      setApiResults([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setIsLoadingSearch(true);
+      const results = await searchBrands(query);
+      setApiResults(results);
+      setIsLoadingSearch(false);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query, useLiveSearch]);
+
+  const localSuggestions: SuggestionItem[] = query.trim().length > 0
     ? KNOWN_COMPETITORS.filter(c =>
         c.name.toLowerCase().includes(query.toLowerCase()) ||
         c.domain.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 7)
     : [];
 
-  // Reset highlight when suggestions change
-  useEffect(() => { setHighlighted(0); }, [query]);
+  const suggestions: SuggestionItem[] = useLiveSearch && apiResults.length > 0
+    ? apiResults.slice(0, 10).map((r) => ({ name: r.name, domain: r.domain, icon: r.icon, claimed: r.claimed }))
+    : localSuggestions;
 
-  const selectCompetitor = (item: typeof KNOWN_COMPETITORS[0]) => {
-    setQuery(item.name);
+  // Reset highlight when query or suggestions change
+  useEffect(() => { setHighlighted(0); }, [query, suggestions.length]);
+
+  const selectCompetitor = (item: SuggestionItem) => {
+    setQuery('');
     setOpen(false);
+    const url = item.domain.startsWith('http') ? item.domain : `https://${item.domain}`;
     onCompetitorsChange([{
       id: selected?.id ?? crypto.randomUUID(),
-      url: `https://${item.domain}`,
+      url,
       name: item.name,
       isValid: true,
       isLoading: false,
+      icon: item.icon,
+      claimed: item.claimed,
+      domain: item.domain,
     }]);
   };
 
@@ -156,7 +190,8 @@ export function CompetitorStep({ competitors, onCompetitorsChange, forceRegenera
             )}
           />
           {query && (
-            <button onClick={clear} className="absolute right-4 text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={clear} className="absolute right-4 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              {isLoadingSearch ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               <X className="w-4 h-4" />
             </button>
           )}
@@ -175,16 +210,26 @@ export function CompetitorStep({ competitors, onCompetitorsChange, forceRegenera
             >
               {suggestions.map((item, i) => (
                 <li
-                  key={item.domain}
+                  key={`${item.domain}-${item.name}-${i}`}
                   onMouseDown={() => selectCompetitor(item)}
                   onMouseEnter={() => setHighlighted(i)}
                   className={cn(
-                    "flex items-center justify-between px-4 py-3 cursor-pointer transition-colors",
+                    "flex items-center justify-between gap-3 px-4 py-3 cursor-pointer transition-colors",
                     i === highlighted ? "bg-primary/10" : "hover:bg-secondary"
                   )}
                 >
-                  <span className="font-medium text-foreground">{item.name}</span>
-                  <span className="text-sm text-muted-foreground">{item.domain}</span>
+                  {item.icon ? (
+                    <img src={item.icon} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
+                  ) : (
+                    <div className="w-6 h-6 rounded bg-muted shrink-0" />
+                  )}
+                  <span className="font-medium text-foreground flex-1 min-w-0 truncate">{item.name}</span>
+                  <span className="text-sm text-muted-foreground shrink-0 flex items-center gap-1.5">
+                    {item.domain}
+                    {item.claimed && (
+                      <BadgeCheck className="w-4 h-4 text-primary shrink-0" aria-label="Verified" />
+                    )}
+                  </span>
                 </li>
               ))}
             </motion.ul>
@@ -199,10 +244,24 @@ export function CompetitorStep({ competitors, onCompetitorsChange, forceRegenera
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/30"
         >
-          <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+          {selected.icon ? (
+            <img src={selected.icon} alt="" className="w-8 h-8 rounded object-contain shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded bg-muted shrink-0" />
+          )}
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-foreground">{selected.name}</p>
-            <p className="text-sm text-muted-foreground">{selected.url}</p>
+            <p className="font-medium text-foreground flex items-center gap-2">
+              {selected.name}
+              {selected.claimed && (
+                <span className="inline-flex items-center gap-1 text-xs text-primary font-normal">
+                  <BadgeCheck className="w-4 h-4 shrink-0" aria-hidden />
+                  Verified
+                </span>
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {selected.domain ?? selected.url}
+            </p>
           </div>
         </motion.div>
       )}
